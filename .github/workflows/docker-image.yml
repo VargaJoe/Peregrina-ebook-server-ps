@@ -30,7 +30,7 @@ jobs:
           echo "TAG=preview" >> $GITHUB_ENV
           echo "EXTRA_TAG=$BRANCH_NAME-$DATE" >> $GITHUB_ENV
         fi
-        
+
     - name: Build and push to dockerhub
       uses: docker/build-push-action@v6
       with:
@@ -38,4 +38,11 @@ jobs:
        push: true
        tags: |
          vargajoe/peregrina-ebook-server:${{ env.TAG }}
-         ${{ github.ref != 'refs/heads/main' && echo "vargajoe/peregrina-ebook-server:${{ env.EXTRA_TAG }}" || true }}
+    
+    - name: Build and push extra tag to dockerhub
+      if: github.ref != 'refs/heads/main'
+      uses: docker/build-push-action@v6
+      with:
+       context: ./src
+       push: true
+       tags: vargajoe/peregrina-ebook-server:${{ env.EXTRA_TAG }}
