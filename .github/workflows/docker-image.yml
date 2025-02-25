@@ -2,9 +2,9 @@ name: Build and push Docker image to dockerhub
 
 on:
   push:
-    branches: [ "develop" ]
+    branches: [ "main", "develop", "feature/*", "bugfix/*" ]  # Add other branches as needed
   pull_request:
-    branches: [ "develop" ]
+    branches: [ "main", "develop", "feature/*", "bugfix/*" ]
 
 jobs:
   build:
@@ -19,12 +19,23 @@ jobs:
        username: ${{ secrets.DOCKERHUB_USERNAME }}
        password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+    - name: Set Docker image tag
+      id: vars
+      run: |
+        if [[ $GITHUB_REF == refs/heads/main ]]; then
+          echo "TAG=latest" >> $GITHUB_ENV
+        else
+          BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)
+          DATE=$(date +%Y%m%d)
+          echo "TAG=preview" >> $GITHUB_ENV
+          echo "EXTRA_TAG=$BRANCH_NAME-$DATE" >> $GITHUB_ENV
+        fi
+        
     - name: Build and push to dockerhub
       uses: docker/build-push-action@v6
       with:
        context: ./src
        push: true
-       tags: vargajoe/peregrina-ebook-server:preview
-    
-    # - name: Build the Docker image
-    #  run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+       tags: |
+         vargajoe/peregrina-ebook-server:${{ env.TAG }}
+         ${{ github.ref != 'refs/heads/main' && echo "vargajoe/peregrina-ebook-server:${{ env.EXTRA_TAG }}" || true }}
