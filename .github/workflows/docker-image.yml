@@ -24,7 +24,7 @@ jobs:
       with:
        context: ./src
        push: true
-       tags: vargajoe/test-git-action:preview
+       tags: vargajoe/peregrina-ebook-server:preview
     
     # - name: Build the Docker image
     #  run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
