@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+    web:
+        image: peregrina-app
+        ports:
+        - "38888:8888"
+        volumes:
+        - ./settings.json:/app/settings.json
+        - ./books:/shared/books
+        - ./comics:/shared/comics
+        restart: unless-stopped

@@ -25,6 +25,19 @@ docker run -v ${PWD}/settings.json:/app/settings.json `
             --rm -p 38888:8888 -it peregrina-app
 ```
 
+## Using Docker Compose
+
+A `docker-compose.yml` file is provided in the project root to simplify running the application.
+
+To start the application using Docker Compose, navigate to the project root directory in your terminal and run:
+```bash
+bash docker-compose up -d
+```
+This command will start the container in the background.
+
+To stop the application, use the following command from the same directory:
+
+
 ## Open app in Browser
 
 http://localhost:38888/
