@@ -36,12 +36,25 @@ class ErrorRequestObject {
     }
 
     RouteRequest() {
-        if ($this.RequestType -eq "Error") {
-            Write-Host "404 page"
-            # Error page is handled by the ErrorController
-            PageHandler($this)
-            return
+        try {
+            if ($this.RequestType -eq "Error") {
+                Write-Host "404 page"
+                # Error page is handled by the ErrorController
+                PageHandler($this)
+            }
+        } catch {
+            # Handle errors during request processing
+            Write-Error "Error in ErrorRequestObject: $($_.Exception.Message)"
+            $response = [ResponseObject]::new($this.HttpContext.Response)
+            $response.HttpResponse.StatusCode = 500
+            $response.ResponseString = "Internal Server Error during Error Handling"
+            $response.ContentType = "text/plain"
+            $response.Respond()
+        } finally {
+            # Ensure response is closed (if not already closed by the PageHandler)
+            if (-not $this.HttpContext.Response.HasStarted) {
+                $this.HttpContext.Response.Close()
+            }
         }
     }
 }
-

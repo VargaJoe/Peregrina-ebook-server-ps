@@ -218,125 +218,144 @@ class peregrinaRequestObject {
     }
 
     RouteRequest() {
-        # action handler
-        if ($this.Action) {
-            Write-Host "ePeregrina action handler"
-            ActionHandler($this)
-            return
+        try {
+            # action handler
+            if ($this.Action) {
+                Write-Host "ePeregrina action handler"
+                ActionHandler($this)
+                return
+            }
+
+            # /
+            # /index
+            # /home
+            if ($this.RequestType -eq "Index") {
+                Write-Host "Index page"
+                # Index page is handled by the HomeController
+                # Show-HomeController $this
+
+                PageHandler($this)
+                return
+            }
+
+            # peregrine ebook server url structure
+            # /category/folderindex/relativepath/virtualpath
+
+            # /category
+            if ($this.RequestType -eq "Category" -and $this.folderindex -eq -1) {
+                Write-Host "ePeregrina page main level - category list"
+                # This is a ePeregrina page on main level
+                # Show-CategoryIndexController $this
+
+                PageHandler($this)
+                return
+            }
+
+            # /category/folderindex
+            if ($this.RequestType -eq "Category" -and $this.folderindex -gt -1 -and $this.RelativePath -eq "") {
+                Write-Host "ePeregrina page main level - shared folders list on folder index"
+                # This is a ePeregrina page on main level
+                PageHandler($this)
+                return
+            }
+
+            # /category/folderindex/relativepath.known + context IS NOT container
+            if ($this.RequestType -eq "Category" -and $this.IsContainer -eq $false -and $this.ContextPageType -ne "" -and -not $this.IsResource) {
+                Write-Host "ePeregrina page with a mapped file"
+                # this is an ordinary content page
+                PageHandler($this)
+                return
+            }
+
+            # /category/folderindex/relativepath.known + context IS NOT container
+            if ($this.RequestType -eq "Category" -and $this.IsContainer -eq $false -and $this.ContextPageType -ne "" -and $this.IsResource) {
+                Write-Host "ePeregrina page with a mapped file REFERRED RESOURCE"
+                BinaryHandler $this
+                return
+            }
+
+            # /category/folderindex/relativepath.unknown + context IS container (folder)
+            if ($this.RequestType -eq "Category" -and $this.RelativePath -ne "" -and $this.IsContainer -and $this.ContextPageType -eq "" -and $this.isfile -eq $false) {
+                Write-Host "ePeregrina page with a folder - show list of contents"
+                # if folder it should return the list of files            
+                PageHandler($this)
+                return
+            }
+
+            # /category/folderindex/relativepath.unknown + context IS container (file)
+            if ($this.RequestType -eq "Category" -and $this.RelativePath -ne "" -and $this.IsContainer -and $this.ContextPageType -eq "" -and $this.isfile -and $this.VirtualPath -eq "") {
+                Write-Host "ePeregrina page with an unknown file container - download the file"
+                # if container file it should return the file
+                BinaryHandler $this
+                return
+            }
+
+    #!!!    # /category/folderindex/relativepath.unknown + context IS NOT container
+            if ($this.RequestType -eq "Category" -and $this.RelativePath -ne "" -and $this.IsContainer -eq $false -and $this.ContextPageType -eq "" -and $this.IsFile) {
+                Write-Host "ePeregrina page with an unknown file - download the file"
+                # it should return the file
+                BinaryHandler $this
+                return
+            }
+
+    #!!!    # /category/folderindex/relativepath.known + context IS container (- is it matter if it is a container ot not?)
+            # it is a previous logic - now it does not matter the context is container or not
+            # contextType is the mapping for context file type - if it is set the appropriate controll will be called no matter what
+            if ($this.RequestType -eq "Category" -and $this.RelativePath -ne "" -and $this.IsContainer -and $this.ContextPageType -ne "" -and $this.VirtualPath -eq "") {
+                Write-Host "ePeregrina page with list of container file"
+                # This is a list page of container file
+                PageHandler($this)
+                return
+            }
+
+            # /category/folderindex/relativepath/virtualpath.known + context IS container 
+            if ($this.RequestType -eq "Category" -and $this.IsContainer -and $this.ContextPageType -ne "" -and $this.VirtualPath -ne "" -and -not $this.IsResource) {
+                Write-Host "ePeregrina page with content of cointainer file on a virtual path"
+                # This is a content page of container file
+                PageHandler($this)
+                return
+            }
+
+            # /category/folderindex/relativepath/virtualpath.known + context IS container 
+            if ($this.RequestType -eq "Category" -and $this.IsContainer -and $this.ContextPageType -ne "" -and $this.VirtualPath -ne "" -and $this.IsResource) {
+                Write-Host "ePeregrina page with content of cointainer file on a virtual path REFERRED RESOURCE"
+                # it should return the file
+                VirtualBinaryHandler $this
+                return
+            }
+
+    #!!!    # /category/folderindex/relativepath/virtualpath.unknown + context IS container 
+            if ($this.RequestType -eq "Category" -and $this.RelativePath -ne "" -and $this.VirtualPath -ne "" -and $this.IsContainer -and $this.ContextPageType -eq "") {
+                Write-Host "ePeregrina page with an unknown file in a container file - download the file"
+                # it should return the file
+                VirtualBinaryHandler $this
+                return
+            }
+
+
+            if ($this.RequestType -eq "Error") {
+                Write-Host "404 page"
+                # Error page is handled by the ErrorController
+                PageHandler($this)
+                return
+            }
         }
-
-        # /
-        # /index
-        # /home
-        if ($this.RequestType -eq "Index") {
-            Write-Host "Index page"
-            # Index page is handled by the HomeController
-            # Show-HomeController $this
-            
-            PageHandler($this)
-            return
+        catch {
+            Write-Error "Error in peregrinaRequestObject: $($_.Exception.Message)"
+            $response = [ResponseObject]::new($this.HttpContext.Response)
+            $response.HttpResponse.StatusCode = 500
+            $response.ResponseString = "Internal Server Error"
+            $response.ContentType = "text/plain"
+            $response.Respond()
         }
-
-        # peregrine ebook server url structure
-        # /category/folderindex/relativepath/virtualpath
-
-        # /category
-        if ($this.RequestType -eq "Category" -and $this.folderindex -eq -1) {
-            Write-Host "ePeregrina page main level - category list"
-            # This is a ePeregrina page on main level
-            # Show-CategoryIndexController $this
-
-            PageHandler($this)
-            return
-        }
-
-        # /category/folderindex
-        if ($this.RequestType -eq "Category" -and $this.folderindex -gt -1 -and $this.RelativePath -eq "") {
-            Write-Host "ePeregrina page main level - shared folders list on folder index"
-            # This is a ePeregrina page on main level
-            PageHandler($this)
-            return
-        }
-
-        # /category/folderindex/relativepath.known + context IS NOT container
-        if ($this.RequestType -eq "Category" -and $this.IsContainer -eq $false -and $this.ContextPageType -ne "" -and -not $this.IsResource) {
-            Write-Host "ePeregrina page with a mapped file"
-            # this is an ordinary content page
-            PageHandler($this)
-            return
-        }
-
-        # /category/folderindex/relativepath.known + context IS NOT container
-        if ($this.RequestType -eq "Category" -and $this.IsContainer -eq $false -and $this.ContextPageType -ne "" -and $this.IsResource) {
-            Write-Host "ePeregrina page with a mapped file REFERRED RESOURCE"
-            BinaryHandler $this
-            return
-        }
-        
-        # /category/folderindex/relativepath.unknown + context IS container (folder)
-        if ($this.RequestType -eq "Category" -and $this.RelativePath -ne "" -and $this.IsContainer -and $this.ContextPageType -eq "" -and $this.isfile -eq $false) {
-            Write-Host "ePeregrina page with a folder - show list of contents"
-            # if folder it should return the list of files            
-            PageHandler($this)
-            return
-        }
-
-        # /category/folderindex/relativepath.unknown + context IS container (file)
-        if ($this.RequestType -eq "Category" -and $this.RelativePath -ne "" -and $this.IsContainer -and $this.ContextPageType -eq "" -and $this.isfile -and $this.VirtualPath -eq "") {
-            Write-Host "ePeregrina page with an unknown file container - download the file"
-            # if container file it should return the file
-            BinaryHandler $this
-            return
-        }
-
-#!!!    # /category/folderindex/relativepath.unknown + context IS NOT container
-        if ($this.RequestType -eq "Category" -and $this.RelativePath -ne "" -and $this.IsContainer -eq $false -and $this.ContextPageType -eq "" -and $this.IsFile) {
-            Write-Host "ePeregrina page with an unknown file - download the file"
-            # it should return the file
-            BinaryHandler $this
-            return
-        }
-
-#!!!    # /category/folderindex/relativepath.known + context IS container (- is it matter if it is a container ot not?)
-        # it is a previous logic - now it does not matter the context is container or not
-        # contextType is the mapping for context file type - if it is set the appropriate controll will be called no matter what
-        if ($this.RequestType -eq "Category" -and $this.RelativePath -ne "" -and $this.IsContainer -and $this.ContextPageType -ne "" -and $this.VirtualPath -eq "") {
-            Write-Host "ePeregrina page with list of container file"
-            # This is a list page of container file
-            PageHandler($this)
-            return
-        }
-
-        # /category/folderindex/relativepath/virtualpath.known + context IS container 
-        if ($this.RequestType -eq "Category" -and $this.IsContainer -and $this.ContextPageType -ne "" -and $this.VirtualPath -ne "" -and -not $this.IsResource) {
-            Write-Host "ePeregrina page with content of cointainer file on a virtual path"
-            # This is a content page of container file
-            PageHandler($this)
-            return
-        }
-        
-        # /category/folderindex/relativepath/virtualpath.known + context IS container 
-        if ($this.RequestType -eq "Category" -and $this.IsContainer -and $this.ContextPageType -ne "" -and $this.VirtualPath -ne "" -and $this.IsResource) {
-            Write-Host "ePeregrina page with content of cointainer file on a virtual path REFERRED RESOURCE"
-            # it should return the file
-            VirtualBinaryHandler $this
-            return
-        }
-
-#!!!    # /category/folderindex/relativepath/virtualpath.unknown + context IS container 
-        if ($this.RequestType -eq "Category" -and $this.RelativePath -ne "" -and $this.VirtualPath -ne "" -and $this.IsContainer -and $this.ContextPageType -eq "") {
-            Write-Host "ePeregrina page with an unknown file in a container file - download the file"
-            # it should return the file
-            VirtualBinaryHandler $this
-            return
-        }
-
-
-        if ($this.RequestType -eq "Error") {
-            Write-Host "404 page"
-            # Error page is handled by the ErrorController
-            PageHandler($this)
-            return
+        finally {
+            if (-not $this.HttpContext.Response.HasStarted) {
+                $response = [ResponseObject]::new($this.HttpContext.Response)
+                $response.HttpResponse.StatusCode = 500 # Or another appropriate status
+                $response.ResponseString = "Incomplete Response"
+                $response.ContentType = "text/plain"
+                $response.Respond()
+            }
         }
     }
 }

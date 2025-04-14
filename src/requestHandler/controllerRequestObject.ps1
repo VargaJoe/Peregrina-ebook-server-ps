@@ -72,13 +72,32 @@ class ControllerRequestObject {
 
     }
 
-    RouteRequest() {
+    [void]RouteRequest() {
         # /controller/action/parameter/s
         if ($this.RequestType -eq "Controller") {
-            # Controller mode is handled by the controller function via naming convention
-            & $this.ControllerFunction $this
+            try {
+                # Controller mode is handled by the controller function via naming convention
+                & $this.ControllerFunction $this
+            }
+            catch {
+                Write-Error "Error in controller: $($_.Exception.Message)"
+                $response = [ResponseObject]::new($this.HttpContext.Response)
+                $response.HttpResponse.StatusCode = 500
+                $response.ResponseString = "Internal Server Error"
+                $response.ContentType = "text/plain"
+                $response.Respond()
+            }
+            finally {
+                # Ensure response is closed (if not already closed by the controller)
+                if (-not $this.HttpContext.Response.HasStarted) {
+                    $response = [ResponseObject]::new($this.HttpContext.Response)
+                    $response.HttpResponse.StatusCode = 500 # Or another appropriate status
+                    $response.ResponseString = "Incomplete Response"
+                    $response.ContentType = "text/plain"
+                    $response.Respond()
+                }
+            }
             return
         }
     }
 }
-
