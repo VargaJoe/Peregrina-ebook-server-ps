@@ -15,28 +15,67 @@ class BinaryHandler {
         Write-Host "GetPhysicalFile"
         try {
             Show-Context
-            $fullPath = $requestObject.ContextPath
-            Write-Output "fullpath: $($fullPath)"
+            $fullPath = $requestObject.ContextPath            
 
             # Check if the file exists
             if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
                 Write-Host "File not found: $fullPath"
                 $this.response.HttpResponse.StatusCode = 404
+                $this.response.Respond()
                 return
             }
 
             $this.response.ContentType = Get-MimeType -filePath $fullPath
-            $fileStream = [System.IO.File]::OpenRead($fullPath)
-            try {
-                 # Stream the file to the response output stream
-                $fileStream.CopyTo($this.response.HttpResponse.OutputStream)
+
+            # Check if it's a PDF file
+            if ($this.response.ContentType -eq 'application/pdf') {
+                # Check if pdfimages is available
+                if (!(Get-Command -Name pdfimages -ErrorAction SilentlyContinue)) {
+                    $this.response.HttpResponse.StatusCode = 500
+                    $this.response.ContentType = "application/json"
+                    $this.response.content = ConvertTo-Json -InputObject @{ error = "pdfimages command not found." }
+                    $this.response.Respond()
+                    return
+                }
+
+                # Create a temporary directory for images
+                $tempDir = Join-Path -Path (Split-Path $fullPath) -ChildPath "temp-pdf-images"
+                if (!(Test-Path -Path $tempDir)) {
+                    New-Item -ItemType Directory -Path $tempDir | Out-Null
+                }
+                
+                # Generate image file names
+                $pdfFileName = [System.IO.Path]::GetFileNameWithoutExtension($fullPath)
+                $imageFileBase = Join-Path -Path $tempDir -ChildPath "$pdfFileName"
+
+                # Convert PDF pages to images using pdfimages
+                & pdfimages -j "$fullPath" "$imageFileBase"
+                
+                # get generated file paths
+                $generatedImages = Get-ChildItem -Path $tempDir -Filter "$pdfFileName-*.jpg" | Sort-Object -Property Name
+                # Create an array of image URLs
+                $imageUrls = foreach($file in $generatedImages) {
+                    "/temp-pdf-images/$($file.Name)"
+                }
+                
+                # Respond with image URLs in JSON format
                 $this.response.HttpResponse.StatusCode = 200
-            }
-            catch {
-                Write-Host "Error sending file: $_"
-                $this.response.HttpResponse.StatusCode = 500
-            } finally{
-                $fileStream.Close()
+                $this.response.ContentType = "application/json"
+                $this.response.content = ConvertTo-Json -InputObject @{ imageUrls = $imageUrls }
+            } else {
+                # Handle other file types as before
+                $fileStream = [System.IO.File]::OpenRead($fullPath)
+                try {
+                    # Stream the file to the response output stream
+                    $fileStream.CopyTo($this.response.HttpResponse.OutputStream)
+                    $this.response.HttpResponse.StatusCode = 200
+                }
+                catch {
+                    Write-Host "Error sending file: $_"
+                    $this.response.HttpResponse.StatusCode = 500
+                } finally{
+                    $fileStream.Close()
+                }
             }
         } catch {
             Write-Host "Error in GetPhysicalFile: $_"

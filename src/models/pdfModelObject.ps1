@@ -5,7 +5,7 @@ class PdfModelObject {
         $this.model = @{
             type = "file"
             category = "pdf"
-            url = $requestObject.localPath
+            url = $requestObject.localPath #changed to simply the file path
         }
     }
 }

@@ -15,21 +15,42 @@
                 <li><a href="./logout" title="Logout"><i class="glyphicon glyphicon-log-out"></i></a></li>
             </nav>
         </header>
-        <section class="placeholder"></section>
-        <section class="pdf">
-            <object
-                data="<%$($model.Url)%>"
-                type="application/pdf"
-                width="100%"
-                
-                aria-labelledby="PDF document"
-                >
-                <p>
-                    Your browser does not support PDFs.
-                    <a href="<%$($model.Url)%>">Download the PDF</a>
-                </p>
-            </object>
-        </section>
+        <section class="placeholder">
+            <div id="pdf-container">
+                <img id="pdf-image" src="" alt="PDF Page" style="width: 100%;">
+                <div style="text-align: center; margin-top: 10px;">
+                    <button id="prev-page" disabled>Previous</button>
+                    <button id="next-page" disabled>Next</button>
+                </div>
+            </div>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    var imageUrls = JSON.parse('<%$($model.Url)%>');
+                    var currentPage = 0;
+                    var pdfImage = document.getElementById('pdf-image');
+                    var prevButton = document.getElementById('prev-page');
+                    var nextButton = document.getElementById('next-page');
+    
+                    function showPage(page) {
+                        pdfImage.src = imageUrls[page];
+                        prevButton.disabled = page === 0;
+                        nextButton.disabled = page === imageUrls.length - 1;
+                    }
+    
+                    if (imageUrls.length > 0) {
+                        showPage(currentPage);
+                         nextButton.disabled = imageUrls.length === 1;
+                         prevButton.disabled = true;
+                    }
+                    nextButton.addEventListener('click', function() {
+                        showPage(++currentPage);
+                    });
+                    prevButton.addEventListener('click', function() {
+                        showPage(--currentPage);
+                    });
+                });
+            </script>
+        </section>    
         <footer><a href="https://github.com/VargaJoe/ePeregrina-server-ps" class="poweredby">powered by ePeregrina</a></footer>
     </body>
 </html>
