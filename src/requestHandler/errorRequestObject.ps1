@@ -1,3 +1,5 @@
+. "$PSScriptRoot/responseObject.ps1"
+
 class ErrorRequestObject {
     [System.Net.HttpListenerContext]$HttpContext
     [System.Net.HttpListenerRequest]$HttpRequest

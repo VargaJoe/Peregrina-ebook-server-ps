@@ -1,3 +1,4 @@
+. "$PSScriptRoot/responseObject.ps1"
 class peregrinaRequestObject {
     [System.Net.HttpListener]$HttpListener
     [System.Net.HttpListenerContext]$HttpContext

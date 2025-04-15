@@ -1,3 +1,5 @@
+. "src/requestHandler/responseObject.ps1"
+
 class ControllerRequestObject {
     [System.Net.HttpListenerContext]$HttpContext
     [System.Net.HttpListenerRequest]$HttpRequest
