@@ -1,30 +1,104 @@
-# Experimental Ebook Server: PowerShell Implementation
+# Peregrina Ebook Server (PowerShell)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Overview
 
-This project represents an experimental implementation of an ebook server using PowerShell. It explores the capabilities of PowerShell in building server applications. However, it's crucial to note that this implementation is not suitable for production environments. Instead, it serves as a demonstration of PowerShell's potential in server development.
+Peregrina is an experimental ebook server built entirely with PowerShell. This project demonstrates PowerShell's capabilities beyond traditional scripting by implementing a fully functional web server for digital document management and delivery.
 
-## ePeregrina Ebook Server
+> **Note:** This implementation is designed for educational and research purposes. It is not recommended for production environments or exposed networks.
 
-The ePeregrina Ebook Server is an experimental project aimed at simulating an ebook server using PowerShell. To get started with this project, follow these steps:
+## Features
 
-- Clone the repository to your local machine.
-- Navigate to the project directory.
-- Specify the folders to share in the `settings.json` configuration. These shares appear as main categories on the homepage and provide the basis for URL routing, such as:
-"booksPaths" -> /books
-"comicsPaths" -> /comics
-- Launch the server script using PowerShell.
+- **Multi-format Support:** Handles various document formats:
+  - EPUB (Electronic Publications)
+  - PDF (Portable Document Format)
+  - CBZ (Comic Book ZIP)
+  - Plain text files
+  - Image files
+  
+- **Flexible Category Configuration:** Define custom library categories via simple JSON configuration
+  
+- **MVC-like Architecture:** Uses a pattern similar to Model-View-Controller for clean separation of concerns
+  
+- **Template-based Rendering:** Uses `.pshtml` files (PowerShell HTML templates) for dynamic page generation
+  
+- **Docker Support:** Run in containerized environments for isolation and portability
 
-```powershell
-.\program.ps1
-```
+## Getting Started
 
-Note: Any number of categories can be specified, provided they end with the word "Paths". Each category can contain any number of folder paths, specified as string arrays. The current proof of concept solution handles images, TXT, CBZ, EPUB, and ZIP file formats. Depending on browser capabilities, PDF files can also be displayed.
+### Prerequisites
 
-## Rendering logic
+- PowerShell 5.1 or higher
+- Windows, or PowerShell Core on Linux/macOS
 
-The program handles URL requests using `HttpListener`, and URL routing is managed by request handler classes. It includes sample handlers for static files (`staticRequestObject`), MVC-like controllers (`controllerRequestObject`), and custom routing (`peregrinaRequestObject`) for an imaginary ebook server. Page rendering is achieved through `.pshtml` files, which are HTML templates with code blocks imitating `.cshtml` files of dotnet. However, instead of C#, PowerShell scripts are used.
+### Installation
 
-## Docker container
+1. Clone the repository:
+   ```
+   git clone https://github.com/yourusername/Peregrina-ebook-server-ps.git
+   cd Peregrina-ebook-server-ps
+   ```
 
-The app can be execute in [Docker container](./info/docker.md).
+2. Configure your library:
+   Edit `src/settings.json` to specify your document folders:
+   ```json
+   {
+     "booksPaths": ["D:/ebooks", "E:/literature"],
+     "comicsPaths": ["D:/comics", "E:/manga"],
+     "documentsPaths": ["D:/documents"]
+   }
+   ```
+   
+   Each category will appear as a main section on the homepage with corresponding URL routes:
+   - `booksPaths` → `/books`
+   - `comicsPaths` → `/comics`
+
+3. Launch the server:
+   ```powershell
+   cd src
+   .\program.ps1
+   ```
+
+4. Access the server at:
+   - `http://localhost:8888` (HTTP)
+   - `https://localhost:443` (HTTPS, requires certificate configuration)
+
+### Docker Deployment
+
+For containerized deployment, see the [Docker documentation](./info/docker.md).
+
+## Technical Architecture
+
+### Request Handling
+
+The server uses `System.Net.HttpListener` to process incoming requests through a chain of specialized handlers:
+
+1. **Static Request Handler:** Serves static files (CSS, JavaScript, images)
+2. **Controller Request Handler:** Processes MVC-style controller requests
+3. **Peregrina Request Handler:** Manages ebook-specific routing and content delivery
+4. **Error Request Handler:** Provides fallback error responses
+
+### View Rendering
+
+Dynamic pages are rendered using `.pshtml` template files, which combine HTML with embedded PowerShell code blocks (similar to ASP.NET's Razor syntax but using PowerShell).
+
+### File Format Handling
+
+Each supported document type has dedicated model objects that handle:
+- Metadata extraction
+- Content rendering
+- Navigation structures
+- Thumbnail/cover generation
+
+## URL Structure
+
+For information about URL patterns and routing, see [URL Types Documentation](./info/url-types.md).
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
