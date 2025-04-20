@@ -21,7 +21,7 @@ Peregrina is an experimental ebook server built entirely with PowerShell. This p
   
 - **MVC-like Architecture:** Uses a pattern similar to Model-View-Controller for clean separation of concerns
   
-- **Template-based Rendering:** Uses `.pshtml` files (PowerShell HTML templates) for dynamic page generation
+- **Custom Template Engine:** Uses `.pshtml` files, a custom PowerShell HTML template format created specifically for this project
   
 - **Docker Support:** Run in containerized environments for isolation and portability
 
@@ -81,7 +81,12 @@ The server uses `System.Net.HttpListener` to process incoming requests through a
 
 ### View Rendering
 
-Dynamic pages are rendered using `.pshtml` template files, which combine HTML with embedded PowerShell code blocks (similar to ASP.NET's Razor syntax but using PowerShell).
+Dynamic pages are rendered using custom `.pshtml` template files, which combine HTML with embedded PowerShell code blocks. This custom templating format was created specifically for this project and draws inspiration from ASP.NET's Razor syntax but utilizes PowerShell scripting instead. The templating system allows for:
+
+- Seamless integration of PowerShell code within HTML markup
+- Dynamic content generation based on server-side data
+- Reusable template components
+- Conditional rendering and loops
 
 ### File Format Handling
 
