@@ -3,7 +3,59 @@
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></meta>
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
         <link rel="stylesheet" type="text/css" href="/style/peregrina.css"></link>
-        <title>pelegrin</title>
+        <title>Peregrina - PDF Viewer</title>
+        <!-- PDF.js library -->
+        <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+        <!-- Our PDF viewer implementation -->
+        <script src="/scripts/pdf-viewer.js"></script>
+        <style>
+            .pdf-controls {
+                padding: 10px;
+                background-color: #f5f5f5;
+                border-bottom: 1px solid #ddd;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .pdf-navigation {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+            .pdf-zoom {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+            .page-input {
+                width: 50px;
+                text-align: center;
+            }
+            #pdf-container {
+                display: flex;
+                justify-content: center;
+                align-items: flex-start;
+                overflow: auto;
+                height: calc(100vh - 120px);
+                background-color: #525659;
+            }
+            #pdf-canvas {
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+                background-color: white;
+                margin: 20px 0;
+            }
+            #error-container {
+                color: red;
+                padding: 20px;
+                text-align: center;
+                display: none;
+            }
+            .pdf-download-link {
+                margin-left: 20px;
+            }
+        </style>
     </head>
     <body>
         <header>
@@ -16,20 +68,75 @@
             </nav>
         </header>
         <section class="placeholder"></section>
-        <section class="pdf">
-            <object
-                data="<%$($model.Url)%>"
-                type="application/pdf"
-                width="100%"
+        
+        <div class="pdf-controls">
+            <div class="pdf-navigation">
+                <button id="prev" class="btn btn-default" disabled>
+                    <i class="glyphicon glyphicon-chevron-left"></i> Previous
+                </button>
+                <div>
+                    Page <span id="page-num">0</span> / <span id="page-count">0</span>
+                </div>
+                <button id="next" class="btn btn-default" disabled>
+                    Next <i class="glyphicon glyphicon-chevron-right"></i>
+                </button>
+            </div>
+            
+            <div class="pdf-navigation">
+                <input type="number" id="page-input" class="form-control page-input" min="1" value="1">
+                <button id="go-button" class="btn btn-default">Go</button>
+            </div>
+            
+            <div class="pdf-zoom">
+                <button id="zoom-out" class="btn btn-default" disabled>
+                    <i class="glyphicon glyphicon-zoom-out"></i>
+                </button>
+                <button id="zoom-in" class="btn btn-default" disabled>
+                    <i class="glyphicon glyphicon-zoom-in"></i>
+                </button>
+            </div>
+            
+            <a href="<%$($model.rawPdfUrl)%>" class="btn btn-primary pdf-download-link" download>
+                <i class="glyphicon glyphicon-download-alt"></i> Download PDF
+            </a>
+        </div>
+        
+        <div id="error-container">
+            <p id="error-message"></p>
+            <p>You can try <a href="<%$($model.rawPdfUrl)%>">downloading the PDF</a> instead.</p>
+        </div>
+        
+        <div id="pdf-container">
+            <canvas id="pdf-canvas"></canvas>
+        </div>
+        
+        <script>
+            // Set PDF.js worker path
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+            
+            // Initialize the viewer after the page loads
+            document.addEventListener('DOMContentLoaded', function() {
+                // Get PDF URL and current page from model
+                const pdfUrl = '<%$($model.rawPdfUrl)%>';
+                const initialPage = <%$($model.currentPage)%>;
                 
-                aria-labelledby="PDF document"
-                >
-                <p>
-                    Your browser does not support PDFs.
-                    <a href="<%$($model.Url)%>">Download the PDF</a>
-                </p>
-            </object>
-        </section>
+                // Initialize the viewer
+                initPdfViewer(pdfUrl, initialPage);
+                
+                // Add event listeners
+                document.getElementById('prev').addEventListener('click', onPrevPage);
+                document.getElementById('next').addEventListener('click', onNextPage);
+                document.getElementById('zoom-in').addEventListener('click', zoomIn);
+                document.getElementById('zoom-out').addEventListener('click', zoomOut);
+                document.getElementById('go-button').addEventListener('click', goToPage);
+                document.getElementById('page-input').addEventListener('keyup', function(event) {
+                    if (event.key === 'Enter') {
+                        goToPage();
+                    }
+                });
+            });
+        </script>
+        
         <footer><a href="https://github.com/VargaJoe/ePeregrina-server-ps" class="poweredby">powered by ePeregrina</a></footer>
     </body>
 </html>
