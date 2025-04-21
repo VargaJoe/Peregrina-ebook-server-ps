@@ -17,6 +17,9 @@ class CbzCoverModelObject {
         $coverFolder = $requestObject.Settings.coverFolder
         $coverCache = $requestObject.Settings.coverCache
         if ($coverFolder) {
+            if (-not (Test-Path -LiteralPath $coverFolder)) {
+                New-Item -Path $coverFolder -ItemType Directory -Force | Out-Null
+            }
             $coverFolder = Resolve-Path -LiteralPath $coverFolder
         }
 

@@ -10,7 +10,7 @@
             <nav class="nav nav-bar-nav">
                 <li><a class="home-btn" href="/"><i class="glyphicon glyphicon-home"></i></a></li>
             </nav>
-
+            <div>404 Template</div>
             <nav class="nav nav-bar-nav nav-bar-right">
                 <li><a href="./logout" title="Logout"><i class="glyphicon glyphicon-log-out"></i></a></li>
             </nav>

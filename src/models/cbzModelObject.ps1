@@ -3,7 +3,7 @@ class CbzModelObject {
 
     CbzModelObject($requestObject) {
         $this.model = @{
-            type = "list"
+            type = "cbz"
             category = "cbz"
             
             items = $this.GetZipContents($requestObject.ContextPath) 

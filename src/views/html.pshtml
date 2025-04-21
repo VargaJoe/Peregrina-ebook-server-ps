@@ -13,6 +13,7 @@
 
             <nav class="nav nav-bar-nav nav-bar-center" style="display: flex;">
                 <li><a href="<%$model.pager.prev.Url%>" title="<%$model.pager.prev.Name%>"><i class="glyphicon glyphicon-arrow-left"></i></a></li>
+                <div>Html Template</div>
                 <li><a href="<%$model.pager.next.Url%>" title="<%$model.pager.next.Name%>"><i class="glyphicon glyphicon-arrow-right"></i></a></li>
             </nav>
 

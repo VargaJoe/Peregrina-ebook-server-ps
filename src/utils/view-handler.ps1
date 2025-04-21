@@ -13,8 +13,29 @@ function Show-View {
     # $response = [ResponseObject]::new($requestObject.HttpContext.Response)
     $response.ResponseType = "html"
 
+    # Determine if we should use a specific template based on model type
+    $templatePath = "./views/$viewName.pshtml"
+    
+    # If the model has a 'type' property, check if there's a view template matching that type
+    if ($model -and $model.type) {
+        $modelTypePath = "./views/$($model.type).pshtml"
+        Write-Host "Checking for model-specific template: $modelTypePath"
+        if (Test-Path -LiteralPath $modelTypePath) {
+            Write-Host "Found model-specific template for type: $($model.type)"
+            $templatePath = $modelTypePath
+        } else {
+            Write-Host "No model-specific template found for type: $($model.type), using default: $templatePath"
+        }
+    }
+
     # Read the HTML content from the file
-    $viewTemplate = (Get-Content -LiteralPath "./views/$viewName.pshtml" -Raw) #-Replace '"', '&quot;'
+    if (-not (Test-Path -LiteralPath $templatePath)) {
+        Write-Host "Warning: Template not found at $templatePath, falling back to home template"
+        $templatePath = "./views/home.pshtml"
+    }
+    
+    Write-Host "Using template: $templatePath"
+    $viewTemplate = (Get-Content -LiteralPath $templatePath -Raw) #-Replace '"', '&quot;'
     # $evaluatedView = (Invoke-Expression "`"$viewTemplate`"") -Replace '&quot;', '"'    
 
     # Define a regular expression pattern to match PowerShell snippets within $( ... )

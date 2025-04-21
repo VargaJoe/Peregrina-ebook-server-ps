@@ -16,7 +16,7 @@ class epubHtmlModelObject {
         $prevIndex = $currentIndex - 1
         $nextIndex = $currentIndex + 1
         $this.model = @{
-            type = "image"
+            type = "html"
             pager = @{
                 prev = $prevIndex -ge 0 ? $htmlObj.ToC[$prevIndex] : $null
                 next = $nextIndex -lt $htmlObj.ToC.Count ? $htmlObj.ToC[$nextIndex] : $null

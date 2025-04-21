@@ -17,6 +17,9 @@ class CbzImageThumbnailModelObject {
         $thumbnailFolder = $requestObject.Settings.thumbnailFolder
         $thumbnailCache = $requestObject.Settings.thumbnailCache
         if ($thumbnailFolder) {
+            if (-not (Test-Path -LiteralPath $thumbnailFolder)) {
+                New-Item -Path $thumbnailFolder -ItemType Directory -Force | Out-Null
+            }
             $thumbnailFolder = Resolve-Path -LiteralPath $thumbnailFolder
         }
 
