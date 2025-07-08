@@ -1,0 +1,746 @@
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></meta>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+        <link rel="stylesheet" type="text/css" href="/style/peregrina.css"></link>
+        <title>Peregrina - PDF Viewer <%$($model.viewerVersion)%></title>
+        
+        <!-- PDF.js library - using CDN with fallback -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" 
+                integrity="sha512-DrPfMsxrwumJQ1QdTNn8FzZoEtXm1HNjUXgFYkwBQrE9bJQ0R5bG8bMXA08/mK5V6R3LR3JUJcwBj7rdmw==" 
+                crossorigin="anonymous" 
+                referrerpolicy="no-referrer"></script>
+                
+        <style>
+            .pdf-controls {
+                padding: 10px;
+                background-color: #f5f5f5;
+                border-bottom: 1px solid #ddd;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .pdf-navigation {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+            .pdf-zoom {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+            .page-input {
+                width: 50px;
+                text-align: center;
+            }
+            #pdf-container {
+                display: flex;
+                justify-content: center;
+                align-items: flex-start;
+                overflow: auto;
+                height: calc(100vh - 160px);
+                background-color: #525659;
+            }
+            #pdf-canvas {
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+                background-color: white;
+                margin: 20px 0;
+            }
+            #error-container {
+                color: red;
+                padding: 20px;
+                text-align: center;
+                display: none;
+                margin: 10px 0;
+                border: 1px solid red;
+                background-color: #fff3f3;
+            }
+            .pdf-download-link {
+                margin-left: 20px;
+            }
+            #version-info {
+                position: fixed;
+                bottom: 40px;
+                right: 10px;
+                background: rgba(0,0,0,0.5);
+                color: white;
+                padding: 5px;
+                font-size: 10px;
+                border-radius: 3px;
+                z-index: 1000;
+            }
+            #log-container {
+                display: none;
+                background: #f8f8f8;
+                border: 1px solid #ddd;
+                padding: 10px;
+                margin-top: 10px;
+                max-height: 150px;
+                overflow-y: auto;
+                font-family: monospace;
+                font-size: 12px;
+            }
+            #log-toggle {
+                margin-left: 10px;
+                font-size: 12px;
+                cursor: pointer;
+                color: blue;
+                text-decoration: underline;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <nav class="nav nav-bar-nav">
+                <li><a class="home-btn" href="/"><i class="glyphicon glyphicon-home"></i></a></li>
+            </nav>
+
+            <nav class="nav nav-bar-nav nav-bar-right">
+                <li><a href="./logout" title="Logout"><i class="glyphicon glyphicon-log-out"></i></a></li>
+            </nav>
+        </header>
+        
+        <!-- Template identification marker: src/views/pdf.pshtml -->
+        <div id="template-info" style="display: none;" data-template-path="src/views/pdf.pshtml" data-template-version="<%$($model.viewerVersion)%>"></div>
+        
+        <section class="placeholder"></section>
+        
+        <div class="pdf-controls">
+            <div class="pdf-navigation">
+                <button id="prev" class="btn btn-default" disabled>
+                    <i class="glyphicon glyphicon-chevron-left"></i> Previous
+                </button>
+                <div>
+                    Page <span id="page-num">0</span> / <span id="page-count">0</span>
+                </div>
+                <button id="next" class="btn btn-default" disabled>
+                    Next <i class="glyphicon glyphicon-chevron-right"></i>
+                </button>
+            </div>
+            
+            <div class="pdf-navigation">
+                <input type="number" id="page-input" class="form-control page-input" min="1" value="1">
+                <button id="go-button" class="btn btn-default">Go</button>
+            </div>
+            
+            <div class="pdf-zoom">
+                <button id="zoom-out" class="btn btn-default" disabled>
+                    <i class="glyphicon glyphicon-zoom-out"></i>
+                </button>
+                <button id="zoom-in" class="btn btn-default" disabled>
+                    <i class="glyphicon glyphicon-zoom-in"></i>
+                </button>
+            </div>
+            
+            <a href="<%$($model.rawPdfUrl)%>" class="btn btn-primary pdf-download-link" download>
+                <i class="glyphicon glyphicon-download-alt"></i> Download PDF
+            </a>
+            
+            <span id="log-toggle">Show Debug Log</span>
+        </div>
+        
+        <div id="error-container">
+            <p id="error-message">Loading PDF viewer...</p>
+            <p>If the PDF doesn't load, you can <a href="<%$($model.rawPdfUrl)%>" download>download the PDF</a> instead.</p>
+            <p>Debug Info:</p>
+            <ul>
+                <li>Template: <strong>src/views/pdf.pshtml</strong></li>
+                <li>Version: <strong><%$($model.viewerVersion)%></strong></li>
+                <li>Template ID: <strong><%$($model.htmlId)%></strong></li>
+                <li>PDF URL: <strong><span id="pdf-url"><%$($model.rawPdfUrl)%></span></strong></li>
+                <li>Current Page: <strong><%$($model.currentPage)%></strong></li>
+            </ul>
+        </div>
+        
+        <div id="log-container"></div>
+        
+        <div id="pdf-container">
+            <canvas id="pdf-canvas"></canvas>
+        </div>
+        
+        <div id="version-info">Template: src/views/pdf.pshtml | Version: <%$($model.viewerVersion)%> | ID: <%$($model.htmlId)%></div>
+        
+        <script>
+            // Initialize the worker if PDF.js is available
+            if (typeof pdfjsLib !== 'undefined') {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            } else {
+                // Create a script element for PDF.js if it's not loaded
+                var script = document.createElement('script');
+                script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+                script.integrity = "sha512-DrPfMsxrwumJQ1QHm8QdTNn8FzZoEtXm1HNjUXgFYkwBQrE9bJQ0R5bG8bMXA08/mK5V6R3LR3JUJcwBj7rdmw==";
+                script.crossOrigin = "anonymous";
+                script.referrerPolicy = "no-referrer";
+                document.head.appendChild(script);
+                
+                // And load the worker script
+                script.onload = function() {
+                    var workerScript = document.createElement('script');
+                    workerScript.innerHTML = "pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';";
+                    document.head.appendChild(workerScript);
+                    setTimeout(initApp, 500); // Give it a moment to initialize
+                };
+            }
+            
+            // Client-side logging system that saves logs to local storage and file
+            var clientLogs = [];
+            var maxLogs = 100;
+            var fileLogger = null;
+            
+            function logToFile(message, level = "INFO") {
+                var timestamp = new Date().toISOString();
+                var templateId = "<%$($model.htmlId)%>";
+                var logEntry = `[${timestamp}] [${level}] [Template:pdf.pshtml] [ID:${templateId}] ${message}`;
+                
+                // Add to in-memory log array
+                clientLogs.push(logEntry);
+                if (clientLogs.length > maxLogs) {
+                    clientLogs.shift(); // Remove oldest log if we exceed limit
+                }
+                
+                // Update log display if visible
+                var logContainer = document.getElementById('log-container');
+                if (logContainer && logContainer.style.display !== 'none') {
+                    var logLine = document.createElement('div');
+                    logLine.textContent = logEntry;
+                    logContainer.appendChild(logLine);
+                    logContainer.scrollTop = logContainer.scrollHeight; // Auto-scroll to bottom
+                }
+                
+                // Save logs to local storage
+                try {
+                    localStorage.setItem('pdfViewerLogs', JSON.stringify(clientLogs));
+                } catch (e) {
+                    console.error("Could not save logs to local storage:", e);
+                }
+                
+                // Also log to console
+                console.log(logEntry);
+                
+                // Save to server log endpoint (if created)
+                try {
+                    fetch('/api/log', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            timestamp: timestamp,
+                            level: level,
+                            template: 'pdf.pshtml',
+                            id: templateId,
+                            message: message
+                        }),
+                    }).catch(e => console.error("Failed to send log to server:", e));
+                } catch(e) {
+                    console.error("Error sending log to server:", e);
+                }
+                
+                return logEntry;
+            }
+            
+            // Display the error container initially
+            document.getElementById('error-container').style.display = 'block';
+            logToFile("PDF viewer initialized (pdf.pshtml) - Version <%$($model.viewerVersion)%> - Template ID: <%$($model.htmlId)%>");
+            
+            // Log basic browser and environment information
+            logToFile(`User Agent: ${navigator.userAgent}`);
+            logToFile(`Window Size: ${window.innerWidth}x${window.innerHeight}`);
+            logToFile(`PDF URL: <%$($model.rawPdfUrl)%>`);
+            logToFile(`Current Page: <%$($model.currentPage)%>`);
+            
+            // Toggle log visibility
+            document.getElementById('log-toggle').addEventListener('click', function() {
+                var logContainer = document.getElementById('log-container');
+                var toggle = document.getElementById('log-toggle');
+                if (logContainer.style.display === 'none' || !logContainer.style.display) {
+                    logContainer.style.display = 'block';
+                    toggle.textContent = 'Hide Debug Log';
+                    
+                    // Display all current logs
+                    logContainer.innerHTML = '';
+                    clientLogs.forEach(function(log) {
+                        var logLine = document.createElement('div');
+                        logLine.textContent = log;
+                        logContainer.appendChild(logLine);
+                    });
+                    
+                    logContainer.scrollTop = logContainer.scrollHeight;
+                } else {
+                    logContainer.style.display = 'none';
+                    toggle.textContent = 'Show Debug Log';
+                }
+            });
+            
+            // Global variables
+            let pdfDoc = null;
+            let pageNum = 1;
+            let pageRendering = false;
+            let pageNumPending = null;
+            let scale = 1.5;
+            let canvas = null;
+            let ctx = null;
+
+            // Initialize the viewer with the PDF URL and starting page
+            function initPdfViewer(pdfUrl, initialPage = 1) {
+                logToFile(`Initializing PDF viewer with URL: ${pdfUrl}, page: ${initialPage}`);
+                
+                canvas = document.getElementById('pdf-canvas');
+                if (!canvas) {
+                    logToFile("Error: Could not find canvas element!", "ERROR");
+                    return;
+                }
+                
+                ctx = canvas.getContext('2d');
+                pageNum = parseInt(initialPage) || 1;
+                
+                // Update page navigation controls
+                document.getElementById('page-num').textContent = pageNum;
+                
+                // Check if PDF.js is available
+                if (typeof pdfjsLib === 'undefined') {
+                    logToFile("Error: PDF.js library not loaded! Will retry in 1 second.", "ERROR");
+                    setTimeout(() => initPdfViewer(pdfUrl, initialPage), 1000);
+                    return;
+                }
+                
+                logToFile("Loading PDF document via XHR...");
+                
+                // Test server connection first
+                var pingXhr = new XMLHttpRequest();
+                pingXhr.open('HEAD', window.location.href, true);
+                pingXhr.timeout = 5000;
+                pingXhr.onload = function() {
+                    logToFile(`Server connection successful (status ${pingXhr.status})`);
+                };
+                pingXhr.onerror = function() {
+                    logToFile("Error connecting to server", "ERROR");
+                };
+                pingXhr.ontimeout = function() {
+                    logToFile("Connection to server timed out", "ERROR");
+                };
+                pingXhr.send();
+
+                // Try to load PDF via XHR
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', pdfUrl, true);
+                xhr.responseType = 'arraybuffer';
+                xhr.timeout = 20000; // 20 second timeout
+                
+                xhr.onload = function() {
+                    logToFile(`XHR loaded with status: ${xhr.status}`);
+                    
+                    if (xhr.status === 200) {
+                        logToFile("PDF file accessible via XHR, proceeding with PDF.js");
+                        document.getElementById('error-message').textContent = "PDF data received, loading viewer...";
+                        
+                        // PDF is accessible, load it with PDF.js
+                        logToFile(`PDF data size: ${xhr.response.byteLength} bytes`);
+                        
+                        try {
+                            const loadingTask = pdfjsLib.getDocument({
+                                data: xhr.response,
+                            });
+                            
+                            loadingTask.promise.then(function(pdfDoc_) {
+                                logToFile(`PDF loaded successfully with ${pdfDoc_.numPages} pages`);
+                                pdfDoc = pdfDoc_;
+                                document.getElementById('page-count').textContent = pdfDoc.numPages;
+                                
+                                // Initial page render
+                                renderPage(pageNum);
+                                
+                                // Enable controls once PDF is loaded
+                                document.getElementById('prev').disabled = false;
+                                document.getElementById('next').disabled = false;
+                                document.getElementById('zoom-in').disabled = false;
+                                document.getElementById('zoom-out').disabled = false;
+                                
+                                // Hide error container when PDF loads successfully
+                                document.getElementById('error-container').style.display = 'none';
+                            }).catch(function(error) {
+                                logToFile(`Error loading PDF via PDF.js: ${error.message}`, "ERROR");
+                                document.getElementById('error-message').textContent = 
+                                    `Error loading PDF: ${error.message}. Trying alternate method...`;
+                                setTimeout(() => tryDirectPdfLoad(pdfUrl, initialPage), 1000);
+                            });
+                        } catch (error) {
+                            logToFile(`Exception during PDF.js loading: ${error.message}`, "ERROR");
+                            document.getElementById('error-message').textContent = 
+                                `Error: ${error.message}. Trying alternate method...`;
+                            setTimeout(() => tryDirectPdfLoad(pdfUrl, initialPage), 1000);
+                        }
+                        
+                    } else {
+                        logToFile(`Error loading PDF via XHR: ${xhr.status}`, "ERROR");
+                        document.getElementById('error-message').textContent = 
+                            `Server returned error ${xhr.status}. Trying alternate method...`;
+                        setTimeout(() => tryDirectPdfLoad(pdfUrl, initialPage), 1000);
+                    }
+                };
+                
+                xhr.onerror = function(e) {
+                    logToFile(`XHR failed to load the PDF: ${e.type}`, "ERROR");
+                    document.getElementById('error-message').textContent = 
+                        "Network error occurred. Trying alternate method...";
+                    setTimeout(() => tryDirectPdfLoad(pdfUrl, initialPage), 1000);
+                };
+                
+                xhr.ontimeout = function() {
+                    logToFile("XHR timeout loading PDF", "ERROR");
+                    document.getElementById('error-message').textContent = 
+                        "Request timed out. Trying alternate method...";
+                    setTimeout(() => tryDirectPdfLoad(pdfUrl, initialPage), 1000);
+                };
+                
+                xhr.send();
+            }
+            
+            // Fallback method to try loading the PDF directly via URL
+            function tryDirectPdfLoad(pdfUrl, initialPage) {
+                logToFile("Trying to load PDF directly via URL");
+                document.getElementById('error-message').textContent = "Trying direct URL approach...";
+                
+                // Try with URL parameters to force raw PDF
+                var enhancedUrl = pdfUrl;
+                if (enhancedUrl.indexOf('?') === -1) {
+                    enhancedUrl += '?raw=true';
+                } else if (enhancedUrl.indexOf('raw=true') === -1) {
+                    enhancedUrl += '&raw=true';
+                }
+                
+                // Try to fetch with fetch API first
+                logToFile(`Trying fetch API with URL: ${enhancedUrl}`);
+                
+                fetch(enhancedUrl)
+                    .then(response => {
+                        logToFile(`Fetch response status: ${response.status}`);
+                        if (!response.ok) {
+                            throw new Error(`Server returned ${response.status}`);
+                        }
+                        return response.arrayBuffer();
+                    })
+                    .then(arrayBuffer => {
+                        logToFile(`PDF fetched successfully, size: ${arrayBuffer.byteLength} bytes`);
+                        return loadPdfWithData(arrayBuffer, initialPage);
+                    })
+                    .catch(error => {
+                        logToFile(`Fetch error: ${error.message}`, "ERROR");
+                        tryLoadWithPdfJs(enhancedUrl, initialPage);
+                    });
+            }
+            
+            // Try loading directly with PDF.js URL approach
+            function tryLoadWithPdfJs(pdfUrl, initialPage) {
+                logToFile(`Trying direct PDF.js loading with URL: ${pdfUrl}`);
+                document.getElementById('error-message').textContent = "Trying PDF.js direct URL loading...";
+                
+                const loadingTask = pdfjsLib.getDocument({
+                    url: pdfUrl,
+                    withCredentials: true
+                });
+                
+                loadingTask.promise.then(function(pdfDoc_) {
+                    logToFile(`PDF loaded successfully with direct URL approach, ${pdfDoc_.numPages} pages`);
+                    pdfDoc = pdfDoc_;
+                    document.getElementById('page-count').textContent = pdfDoc.numPages;
+                    
+                    // Initial page render
+                    renderPage(pageNum);
+                    
+                    // Enable controls once PDF is loaded
+                    document.getElementById('prev').disabled = false;
+                    document.getElementById('next').disabled = false;
+                    document.getElementById('zoom-in').disabled = false;
+                    document.getElementById('zoom-out').disabled = false;
+                    
+                    // Hide error container when PDF loads successfully
+                    document.getElementById('error-container').style.display = 'none';
+                }).catch(function(error) {
+                    logToFile(`Error loading PDF via direct URL: ${error.message}`, "ERROR");
+                    
+                    // Final fallback: offer direct download and viewing
+                    document.getElementById('error-message').innerHTML = 
+                        `All PDF loading methods failed.<br>Error: ${error.message}<br><br>` +
+                        `<a href="${pdfUrl}" target="_blank" class="btn btn-primary">Open PDF in New Tab</a> or ` +
+                        `<a href="${pdfUrl}" download class="btn btn-success">Download PDF</a>`;
+                });
+            }
+            
+            // Load PDF with array buffer data
+            function loadPdfWithData(data, initialPage) {
+                logToFile('Loading PDF with array buffer data');
+                
+                const loadingTask = pdfjsLib.getDocument({ data: data });
+                
+                loadingTask.promise.then(function(pdfDoc_) {
+                    logToFile(`PDF loaded successfully from data, ${pdfDoc_.numPages} pages`);
+                    pdfDoc = pdfDoc_;
+                    document.getElementById('page-count').textContent = pdfDoc.numPages;
+                    
+                    // Initial page render
+                    renderPage(pageNum);
+                    
+                    // Enable controls once PDF is loaded
+                    document.getElementById('prev').disabled = false;
+                    document.getElementById('next').disabled = false;
+                    document.getElementById('zoom-in').disabled = false;
+                    document.getElementById('zoom-out').disabled = false;
+                    
+                    // Hide error container when PDF loads successfully
+                    document.getElementById('error-container').style.display = 'none';
+                }).catch(function(error) {
+                    logToFile(`Error loading PDF from data: ${error.message}`, "ERROR");
+                    document.getElementById('error-message').textContent = 
+                        `Error loading PDF data: ${error.message}. Trying another method...`;
+                    tryLoadWithPdfJs(pdfUrl, initialPage);
+                });
+            }
+
+            // Render the specified page
+            function renderPage(num) {
+                pageRendering = true;
+                logToFile(`Rendering page ${num}`);
+                
+                // Update page display
+                document.getElementById('page-num').textContent = num;
+                document.getElementById('page-input').value = num;
+                
+                // Update URL with the current page
+                updateUrlWithPage(num);
+                
+                // Get page from PDF
+                pdfDoc.getPage(num).then(function(page) {
+                    const viewport = page.getViewport({ scale: scale });
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    
+                    // Render PDF page into canvas context
+                    const renderContext = {
+                        canvasContext: ctx,
+                        viewport: viewport
+                    };
+                    
+                    const renderTask = page.render(renderContext);
+                    
+                    // Wait for rendering to finish
+                    renderTask.promise.then(function() {
+                        pageRendering = false;
+                        logToFile(`Page ${num} rendered successfully`);
+                        
+                        // If another page rendering is pending, execute it
+                        if (pageNumPending !== null) {
+                            renderPage(pageNumPending);
+                            pageNumPending = null;
+                        }
+                    }).catch(function(error) {
+                        logToFile(`Error rendering page ${num}: ${error.message}`, "ERROR");
+                        pageRendering = false;
+                    });
+                }).catch(function(error) {
+                    logToFile(`Error getting page ${num}: ${error.message}`, "ERROR");
+                    pageRendering = false;
+                });
+            }
+
+            // Queue rendering of a page
+            function queueRenderPage(num) {
+                if (pageRendering) {
+                    pageNumPending = num;
+                } else {
+                    renderPage(num);
+                }
+            }
+
+            // Go to previous page
+            function onPrevPage() {
+                if (pageNum <= 1) {
+                    return;
+                }
+                pageNum--;
+                logToFile(`Navigating to previous page: ${pageNum}`);
+                queueRenderPage(pageNum);
+            }
+
+            // Go to next page
+            function onNextPage() {
+                if (pageNum >= pdfDoc.numPages) {
+                    return;
+                }
+                pageNum++;
+                logToFile(`Navigating to next page: ${pageNum}`);
+                queueRenderPage(pageNum);
+            }
+
+            // Zoom in the PDF
+            function zoomIn() {
+                scale += 0.25;
+                logToFile(`Zooming in to scale: ${scale}`);
+                renderPage(pageNum);
+            }
+
+            // Zoom out the PDF
+            function zoomOut() {
+                if (scale > 0.5) {
+                    scale -= 0.25;
+                    logToFile(`Zooming out to scale: ${scale}`);
+                    renderPage(pageNum);
+                }
+            }
+
+            // Update URL when changing pages
+            function updateUrlWithPage(pageNum) {
+                try {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('page', pageNum);
+                    window.history.replaceState({}, '', url.toString());
+                    logToFile(`Updated URL with page: ${pageNum}`);
+                } catch (e) {
+                    logToFile(`Error updating URL: ${e.message}`, "ERROR");
+                }
+            }
+
+            // Go to specific page
+            function goToPage() {
+                const input = document.getElementById('page-input');
+                const pageNumber = parseInt(input.value);
+                
+                if (isNaN(pageNumber) || !pdfDoc || pageNumber < 1 || pageNumber > pdfDoc.numPages) {
+                    alert(`Please enter a valid page number between 1 and ${pdfDoc ? pdfDoc.numPages : '?'}`);
+                    return;
+                }
+                
+                pageNum = pageNumber;
+                logToFile(`Going to page: ${pageNum}`);
+                queueRenderPage(pageNum);
+            }
+            
+            // Initialize the viewer after the page loads
+            function initApp() {
+                logToFile("Starting PDF viewer application initialization");
+                try {
+                    // Log template details
+                    logToFile(`Template Path: src/views/pdf.pshtml`);
+                    logToFile(`Template Version: <%$($model.viewerVersion)%>`);
+                    logToFile(`Template ID: <%$($model.htmlId)%>`);
+                    
+                    // Check for PDF.js
+                    if (typeof pdfjsLib === 'undefined') {
+                        logToFile("PDF.js not loaded yet, will retry in 1 second", "WARNING");
+                        setTimeout(initApp, 1000);
+                        return;
+                    }
+                    
+                    // Log PDF.js version
+                    logToFile(`PDF.js version: ${pdfjsLib.version}`);
+                    
+                    // Get PDF URL and current page from model
+                    const pdfUrl = '<%$($model.rawPdfUrl)%>';
+                    logToFile(`PDF URL from model: ${pdfUrl}`);
+                    document.getElementById('pdf-url').textContent = pdfUrl;
+                    
+                    const initialPage = parseInt('<%$($model.currentPage)%>') || 1;
+                    logToFile(`Initial page from model: ${initialPage}`);
+                    
+                    // Set up event listeners
+                    document.getElementById('prev').addEventListener('click', onPrevPage);
+                    document.getElementById('next').addEventListener('click', onNextPage);
+                    document.getElementById('zoom-in').addEventListener('click', zoomIn);
+                    document.getElementById('zoom-out').addEventListener('click', zoomOut);
+                    document.getElementById('go-button').addEventListener('click', goToPage);
+                    document.getElementById('page-input').addEventListener('keyup', function(event) {
+                        if (event.key === 'Enter') {
+                            goToPage();
+                        }
+                    });
+                    
+                    // Test the raw PDF URL with a HEAD request
+                    var testXhr = new XMLHttpRequest();
+                    testXhr.open('HEAD', pdfUrl, true);
+                    testXhr.onload = function() {
+                        logToFile(`Raw PDF URL test (HEAD): ${testXhr.status} - ${testXhr.statusText}`);
+                    };
+                    testXhr.onerror = function() {
+                        logToFile(`Raw PDF URL test failed`, "ERROR");
+                    };
+                    testXhr.send();
+                    
+                    // Initialize the PDF viewer
+                    initPdfViewer(pdfUrl, initialPage);
+                } catch (err) {
+                    logToFile(`Error initializing PDF viewer: ${err.message}`, "ERROR");
+                    document.getElementById('error-message').textContent = 
+                        `Error initializing PDF viewer: ${err.message}`;
+                }
+            }
+            
+            // Start the application when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initApp);
+                logToFile("Waiting for DOMContentLoaded event");
+            } else {
+                logToFile("DOM already loaded, starting immediately");
+                initApp();
+            }
+            
+            // Create a function to dump logs to the server
+            function sendLogsToServer() {
+                try {
+                    // Get logs from localStorage or memory
+                    const logs = localStorage.getItem('pdfViewerLogs') || JSON.stringify(clientLogs);
+                    
+                    // Create a hidden form and submit it
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '/log-pdf-viewer';
+                    form.style.display = 'none';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'logs';
+                    input.value = logs;
+                    
+                    const urlInput = document.createElement('input');
+                    urlInput.type = 'hidden';
+                    urlInput.name = 'pdfUrl';
+                    urlInput.value = document.getElementById('pdf-url').textContent;
+                    
+                    form.appendChild(input);
+                    form.appendChild(urlInput);
+                    document.body.appendChild(form);
+                    
+                    form.submit();
+                } catch (e) {
+                    console.error("Error sending logs to server:", e);
+                }
+            }
+            
+            // Add a button to export logs
+            const exportLogsBtn = document.createElement('button');
+            exportLogsBtn.className = 'btn btn-default';
+            exportLogsBtn.innerHTML = '<i class="glyphicon glyphicon-download"></i> Export Logs';
+            exportLogsBtn.style.marginLeft = '10px';
+            exportLogsBtn.onclick = function() {
+                // Create a downloadable file with logs
+                const logText = clientLogs.join('\n');
+                const blob = new Blob([logText], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `pdf-viewer-logs-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            };
+            document.querySelector('.pdf-controls').appendChild(exportLogsBtn);
+        </script>
+        
+        <!-- Template footer marker -->
+        <div id="template-footer" style="display:none">Template: src/views/pdf.pshtml</div>
+        <footer><a href="https://github.com/VargaJoe/ePeregrina-server-ps" class="poweredby">powered by ePeregrina</a></footer>
+    </body>
+</html>

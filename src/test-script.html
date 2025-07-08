@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JavaScript Test</title>
+</head>
+<body>
+    <h1>JavaScript Test</h1>
+    <p id="output">If JavaScript is working, this text will change.</p>
+
+    <script src="/scripts/pdf-viewer.js"></script>
+    <script>
+        // Simple test to see if JavaScript files are loaded properly
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('output').textContent = "JavaScript is working! The PDF viewer script was loaded.";
+            
+            // Check if pdf-viewer.js functions are available
+            if (typeof initPdfViewer === 'function') {
+                document.getElementById('output').textContent += "\nThe PDF viewer functions are available.";
+            } else {
+                document.getElementById('output').textContent += "\nThe PDF viewer functions are NOT available.";
+            }
+        });
+    </script>
+</body>
+</html>

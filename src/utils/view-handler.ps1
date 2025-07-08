@@ -1,17 +1,21 @@
 function Show-View {
     param(
-        # [parameter(Mandatory = $true)]
-        # [peregrinaRequestObject]$requestObject,
         [parameter(Mandatory = $true)]
-        [ResponseObject]$response,
+        [Object]$response,
         [parameter(Mandatory = $true)]
         [string]$viewName,
         [parameter(Mandatory = $false)]
         [Object]$model
     )
-    # "new response $viewName" | Out-File -Append -FilePath "./log.txt"
-    # $response = [ResponseObject]::new($requestObject.HttpContext.Response)
+    
     $response.ResponseType = "html"
+    
+    # Create a clean scope for template evaluation
+    $templateScope = [PSCustomObject]@{
+        model = $model
+        response = $response
+        viewName = $viewName
+    }
 
     # Determine if we should use a specific template based on model type
     $templatePath = "./views/$viewName.pshtml"
@@ -35,48 +39,67 @@ function Show-View {
     }
     
     Write-Host "Using template: $templatePath"
-    $viewTemplate = (Get-Content -LiteralPath $templatePath -Raw) #-Replace '"', '&quot;'
-    # $evaluatedView = (Invoke-Expression "`"$viewTemplate`"") -Replace '&quot;', '"'    
+    $viewTemplate = (Get-Content -LiteralPath $templatePath -Raw)
 
-    # Define a regular expression pattern to match PowerShell snippets within $( ... )
+    # Define a regular expression pattern to match PowerShell snippets within <% ... %>
     $pattern = '<%\s*([\s\S]*?)\s*%>'
-
-    # Use a regular expression match evaluator to evaluate PowerShell snippets
-    # Create a regex object
     $regex = [regex]::new($pattern)
 
-    # Initialize an array to store evaluated results
-    $evaluatedSnippets = @()
-
-    # Store the matches and their indices
-    $matchIndices = @()
+    # Process the template
+    $evaluatedFragments = @()
+    $lastIndex = 0
+    
     foreach ($match in $regex.Matches($viewTemplate)) {
-        $codeSnippet = $match.Groups[1].Value  # Access the matched code snippet
+        # Add text before the match
+        if ($match.Index -gt $lastIndex) {
+            $evaluatedFragments += $viewTemplate.Substring($lastIndex, $match.Index - $lastIndex)
+        }
+        
+        # Extract and evaluate the code snippet
+        $codeSnippet = $match.Groups[1].Value
         Write-Host "matched: $codeSnippet"
-        # Evaluate the code snippet
+        
         try {
-        $evaluatedSnippet = Invoke-Expression $codeSnippet
-        } catch {
-            $evaluatedSnippet = "Error: $_"
+            # Create script block with explicit variable import
+            $scriptBlock = {
+                param($templateScope)
+                $model = $templateScope.model
+                
+                # Execute the template code
+                Invoke-Expression $args[0]
+            }
+            
+            # Execute script block with proper scope
+            $evaluatedSnippet = & $scriptBlock $templateScope $codeSnippet
+            
+            if ($null -eq $evaluatedSnippet) {
+                $evaluatedSnippet = ""
+            }
+            elseif ($evaluatedSnippet -is [array]) {
+                $evaluatedSnippet = $evaluatedSnippet -join ""
+            }
+            
+            $evaluatedFragments += $evaluatedSnippet
         }
-        if ($evaluatedSnippet -is [array]) {
-            $evaluatedSnippet = $evaluatedSnippet -join " "
+        catch {
+            $evaluatedFragments += "<!-- Error processing template code: $_ -->"
+            Write-Host "Error evaluating script block: $_"
         }
-        # Write-Host "evaluated: $evaluatedSnippet"
-        $evaluatedSnippets += $evaluatedSnippet
-        $matchIndices += $match.Index
+        
+        # Update lastIndex for next iteration
+        $lastIndex = $match.Index + $match.Length
     }
+    
+    # Add any remaining template text
+    if ($lastIndex -lt $viewTemplate.Length) {
+        $evaluatedFragments += $viewTemplate.Substring($lastIndex)
+    }
+    
+    # Combine all fragments into the final HTML
+    $evaluatedView = $evaluatedFragments -join ""
 
-    # Replace the matched patterns with the evaluated results
-    $evaluatedView = $regex.Replace($viewTemplate, {
-        param($match)
-        $index = [array]::IndexOf($matchIndices, $match.Index)
-        $evaluatedSnippet = $evaluatedSnippets[$index]  # Use the match index to get the evaluated snippet
-        return $evaluatedSnippet
-    })
-
-    # Evaluated HTML content goes to response
+    # Send the response
     $response.ResponseString = $evaluatedView
     $response.Respond()
-    write-host done
+    Write-Host "done"
 }

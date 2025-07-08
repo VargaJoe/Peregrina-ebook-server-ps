@@ -9,17 +9,42 @@ let scale = 1.5;
 let canvas = null;
 let ctx = null;
 
+// Debugging function
+function debugLog(message) {
+  console.log(`[PDF Viewer] ${message}`);
+  if (document.getElementById('error-message')) {
+    document.getElementById('error-message').textContent += `\n${message}`;
+    document.getElementById('error-container').style.display = 'block';
+  }
+}
+
 // Initialize the viewer with the PDF URL and starting page
 function initPdfViewer(pdfUrl, initialPage = 1) {
+  debugLog(`Initializing PDF viewer with URL: ${pdfUrl}, page: ${initialPage}`);
+  
   canvas = document.getElementById('pdf-canvas');
+  if (!canvas) {
+    debugLog("Error: Could not find canvas element!");
+    return;
+  }
+  
   ctx = canvas.getContext('2d');
   pageNum = parseInt(initialPage) || 1;
   
   // Update page navigation controls
   document.getElementById('page-num').textContent = pageNum;
   
+  // Check if PDF.js is available
+  if (typeof pdfjsLib === 'undefined') {
+    debugLog("Error: PDF.js library not loaded!");
+    return;
+  }
+  
+  debugLog("Loading PDF document...");
+  
   // Load the PDF
   pdfjsLib.getDocument(pdfUrl).promise.then(function(pdfDoc_) {
+    debugLog(`PDF loaded successfully with ${pdfDoc_.numPages} pages`);
     pdfDoc = pdfDoc_;
     document.getElementById('page-count').textContent = pdfDoc.numPages;
     
@@ -32,6 +57,7 @@ function initPdfViewer(pdfUrl, initialPage = 1) {
     document.getElementById('zoom-in').disabled = false;
     document.getElementById('zoom-out').disabled = false;
   }).catch(function(error) {
+    debugLog(`Error loading PDF: ${error.message}`);
     console.error('Error loading PDF:', error);
     document.getElementById('error-message').textContent = 
       'Error loading PDF: ' + error.message;

@@ -47,12 +47,14 @@ class ResponseObject {
                 $this.HttpResponse.StatusCode = 404
             }
 
+            # Set the Content-Type header BEFORE writing to the output stream
+            $this.HttpResponse.Headers.Add("Content-Type", $this.ContentType)
+
             if ($ResponseBuffer -and $ResponseBuffer.Length -gt 0) {
                 Write-Host bytes $this.ResponseBytes.Length
                 Write-Host bytes $ResponseBuffer.Length
 
                 $this.HttpResponse.ContentLength64 = $ResponseBuffer.Length
-                # $this.HttpResponse.OutputStream.Write($ResponseBuffer, 0, $ResponseBuffer.Length)
                 try {
                     $this.HttpResponse.OutputStream.Write($ResponseBuffer, 0, $ResponseBuffer.Length)
                     $this.HttpResponse.OutputStream.Close()
@@ -60,7 +62,6 @@ class ResponseObject {
                     # Write-Host "Error writing to OutputStream: $_"
                 }
             }
-            $this.HttpResponse.Headers.Add("Content-Type", $this.ContentType)            
         } catch {
             $this.HttpResponse.StatusCode = 500
         } finally {

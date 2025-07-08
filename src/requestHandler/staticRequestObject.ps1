@@ -29,7 +29,13 @@ class StaticRequestObject {
         $this.UrlVariables = $this.HttpRequest.QueryString
 
         $settingsFilePath = "./settings.json"
-        $this.Settings = Get-Content $settingsFilePath | ConvertFrom-Json
+        if (Test-Path -LiteralPath $settingsFilePath) {
+            $this.Settings = Get-Content $settingsFilePath | ConvertFrom-Json
+        } else {
+            $this.Settings = [PSCustomObject]@{
+                webFolder = "./"
+            }
+        }
 
         $this.RequestType = ""
 
@@ -38,26 +44,26 @@ class StaticRequestObject {
         Write-Host "accept" $this.HttpRequest.Headers["Accept"]
         Write-Host "user agent" $this.HttpRequest.UserAgent
 
-        # webroot should be global from start script
-        $webRootPath = ($this.Settings.webFolder) -replace "../", "/" -replace "./", "/" -replace "//", "/"
-        if ($webRootPath.startswith("/")) {
-            $webRootPath = $Global:RootPath + $webRootPath
-            if (Test-Path -LiteralPath $webRootPath) {
-                $webRootPath = Resolve-Path -LiteralPath $webRootPath
-            } else {
-                write-host "webRootPath not found: $webRootPath"
-                exit
-            }
+        # First try direct path from script root
+        $directPath = Join-Path -Path $Global:RootPath -ChildPath $this.LocalPath.TrimStart('/')
+        if (Test-Path -LiteralPath $directPath -PathType Leaf) {
+            Write-Host "File resource found at: $directPath"
+            $this.RequestType = "File"
+            $this.ContextPath = $directPath
+            return
+        }
+
+        # Then try webroot path
+        $webRootPath = $this.Settings.webFolder
+        if (-not [System.IO.Path]::IsPathRooted($webRootPath)) {
+            $webRootPath = Join-Path -Path $Global:RootPath -ChildPath $webRootPath
         }
         
-        $testFilePath = Join-Path -Path $webRootPath.Path -ChildPath $this.LocalPath
-        if (Test-Path -LiteralPath $testFilePath -PathType Leaf) {
-            # File page
-            Write-Host "File resource" $testFilePath
+        $webFilePath = Join-Path -Path $webRootPath -ChildPath $this.LocalPath.TrimStart('/')
+        if (Test-Path -LiteralPath $webFilePath -PathType Leaf) {
+            Write-Host "File resource found at: $webFilePath"
             $this.RequestType = "File"
-            # $this.Controller = "File"
-            # $this.Action = "Stream"
-            $this.ContextPath = Resolve-Path -LiteralPath $testFilePath
+            $this.ContextPath = $webFilePath
             return
         }
     }

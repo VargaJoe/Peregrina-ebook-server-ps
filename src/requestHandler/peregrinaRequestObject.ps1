@@ -210,10 +210,22 @@ class peregrinaRequestObject {
         }
 
         # is there better way to distinguish resource request from content request?        
+        # if (($this.HttpRequest.Headers["Referer"] -match "\.html" -and $this.ContextFileType -ne "html" -and $this.VirtualFileType -ne "html") `
+        # -or ($this.HttpRequest.Headers["Referer"] -match "\.xhtml" -and $this.ContextFileType -ne "xhtml" -and $this.VirtualFileType -ne "xhtml") `
+        # -or ($this.HttpRequest.Headers["Referer"] -match "\.pdf" -and $this.ContextFileType -eq "pdf")) {
+        #     $this.IsResource = $true
+        # }
+
+        # Enhanced resource detection logic with more robust PDF handling
         if (($this.HttpRequest.Headers["Referer"] -match "\.html" -and $this.ContextFileType -ne "html" -and $this.VirtualFileType -ne "html") `
         -or ($this.HttpRequest.Headers["Referer"] -match "\.xhtml" -and $this.ContextFileType -ne "xhtml" -and $this.VirtualFileType -ne "xhtml") `
-        -or ($this.HttpRequest.Headers["Referer"] -match "\.pdf" -and $this.ContextFileType -eq "pdf")) {
+        -or ($this.HttpRequest.Headers["Referer"] -match "\.pdf" -and $this.ContextFileType -eq "pdf") `
+        -or ($this.UrlVariables["raw"] -eq "True" -and $this.ContextFileType -eq "pdf") `
+        -or ($this.UrlVariables["raw"] -eq "true" -and $this.ContextFileType -eq "pdf") `
+        -or ($this.HttpRequest.Headers["Accept"] -match "application/pdf" -and $this.ContextFileType -eq "pdf")) {
             $this.IsResource = $true
+            Write-Host "Setting IsResource to true for PDF request with raw=true parameter or Accept: application/pdf header"
+            Write-Host "Current Raw Parameter: $($this.UrlVariables["raw"]) and Content Type: $($this.ContextFileType)"
         }
     }
 

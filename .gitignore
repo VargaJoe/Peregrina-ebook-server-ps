@@ -17,3 +17,6 @@ src/Dockerfile
 src/mysql.ps1
 src/program-async-x.ps1
 src/test.ps1
+.github/*.md
+.vscode/*
+src/debug-log.txt
