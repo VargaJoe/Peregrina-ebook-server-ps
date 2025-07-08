@@ -49,82 +49,83 @@ function Get-MimeType {
 }
 
 function BinaryHandler($requestObject) {
-    $binary = [BinaryHandler]::new($this)
+    $binary = [BinaryHandler]::new($requestObject)
     $binary.GetPhysicalFile($requestObject)
 }
 
 function VirtualBinaryHandler($requestObject) {
-    $binary = [BinaryHandler]::new($this)
-    $binary.GetVirtualFile($this)
+    $binary = [BinaryHandler]::new($requestObject)
+    $binary.GetVirtualFile($requestObject)
 }
 
 function PageHandler($requestObject) {
-    Show-Context
-    $typeName = $this.ContextModelType + $this.VirtualModelType + "ModelObject"
-    Write-Host "type $typeName"
-    if ([System.Management.Automation.PSTypeName]$typeName) {
-        $pageModel = New-Object -TypeName $typeName -ArgumentList $requestObject
-    }
-    Write-Host "model type" $pageModel.model.type
-    if ($null -eq $pageModel -or $null -eq $pageModel.model -or $pageModel.model.type -eq "error") {
-        Write-Host "Model not found or error occured."
-        return
-    }
+    Write-Host "PageHandler called with RequestType: $($requestObject.RequestType)"
+    try {
+        Show-Context
+        $typeName = $requestObject.ContextModelType + $requestObject.VirtualModelType + "ModelObject"
+        Write-Host "type $typeName"
+        if ([System.Management.Automation.PSTypeName]$typeName) {
+            $pageModel = New-Object -TypeName $typeName -ArgumentList $requestObject
+        }
+        Write-Host "model type" $pageModel.model.type
+        if ($null -eq $pageModel -or $null -eq $pageModel.model -or $pageModel.model.type -eq "error") {
+            Write-Host "Model not found or error occured."
+            return
+        }
 
-    # Ensure we have a non-empty template name, defaulting to "home" if both are empty
-    $pageTemplate = if ($this.VirtualModelType) { 
-        $this.VirtualModelType 
-    } elseif ($this.ModelType) { 
-        # $this.ModelType 
-        $this.ContextModelType
-    } else { 
-        "home" # Default template if both are empty
+        # Ensure we have a non-empty template name, defaulting to "home" if both are empty
+        $pageTemplate = if ($requestObject.VirtualModelType) { 
+            $requestObject.VirtualModelType 
+        } elseif ($requestObject.ModelType) { 
+            # $requestObject.ModelType 
+            $requestObject.ContextModelType
+        } else { 
+            "home" # Default template if both are empty
+        }
+        
+        Write-Host "matched: $pageTemplate"
+        
+        # Check if we're running in async mode (ResponseObjectAsync available) or sync mode
+        if ("ResponseObjectAsync" -as [type]) {
+            $response = [ResponseObjectAsync]::new($requestObject.HttpContext.Response)
+            Write-Host "Using ResponseObjectAsync for response"
+        } else {
+            $response = [ResponseObject]::new($requestObject.HttpContext.Response)
+            Write-Host "Using ResponseObject for response"
+        }
+        
+        Show-View $response $pageTemplate $pageModel.model
     }
-    
-    Write-Host "matched: $pageTemplate"
-    
-    # Check if we're running in async mode (ResponseObjectAsync available) or sync mode
-    if ("ResponseObjectAsync" -as [type]) {
-        $response = [ResponseObjectAsync]::new($requestObject.HttpContext.Response)
-        Write-Host "Using ResponseObjectAsync for response"
-    } else {
-        $response = [ResponseObject]::new($requestObject.HttpContext.Response)
-        Write-Host "Using ResponseObject for response"
+    catch {
+        Write-Host "Error in PageHandler: $_"
+        Write-Host "Stack trace: $($_.ScriptStackTrace)"
     }
-    
-    Show-View $response $pageTemplate $pageModel.model
 }
 
 function ActionHandler($requestObject) {
-    Show-Context
-    $typeName = $this.ContextModelType + $this.VirtualModelType + $this.Action + "ModelObject"
-    Write-Host "action type $typeName"
-    
-    if ([System.Management.Automation.PSTypeName]$typeName) {
-        try {
-            $actionModel = New-Object -TypeName $typeName -ArgumentList $requestObject
-        } catch {
-            Write-Host "Error creating action model: $_"
-            return
+    Write-Host "ActionHandler called with Action: $($requestObject.Action)"
+    try {
+        Show-Context
+        $typeName = $requestObject.ContextModelType + $requestObject.VirtualModelType + $requestObject.Action + "ModelObject"
+        Write-Host "action type $typeName"
+        
+        if ([System.Management.Automation.PSTypeName]$typeName) {
+            try {
+                $actionModel = New-Object -TypeName $typeName -ArgumentList $requestObject
+            } catch {
+                Write-Host "Error creating action model: $_"
+                return
+            }
         }
+        
+        # Call the action model's GetResponse method
+        # The action model constructor now handles async vs sync mode detection
+        $actionModel.GetResponse($requestObject)
     }
-    
-    # If we're running in async mode, need to ensure the GetResponse method works
-    # with the appropriate response object type
-    if ("ResponseObjectAsync" -as [type]) {
-        # Override the GetResponse method for async mode
-        Write-Host "Using ResponseObjectAsync for action response"
-        $actionModel | Add-Member -MemberType ScriptMethod -Name 'GetResponse' -Value {
-            param($requestObj)
-            
-            $response = [ResponseObjectAsync]::new($requestObj.HttpContext.Response)
-            $this.ProcessRequest($response)
-            $response.Respond()
-        } -Force
+    catch {
+        Write-Host "Error in ActionHandler: $_"
+        Write-Host "Stack trace: $($_.ScriptStackTrace)"
     }
-    
-    # Call the action model's GetResponse method
-    $actionModel.GetResponse($this)
 }
 
 function Write-PDFDiagnostics {

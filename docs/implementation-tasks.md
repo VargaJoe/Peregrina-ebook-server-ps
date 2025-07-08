@@ -113,6 +113,9 @@
 - [ ] Establish clear development workflow
 
 ### 🔄 Story 10 - Systematic Feature Testing and Validation
+- [x] Fixed critical path resolution issues in both sync and async server startup
+- [x] Fixed template loading errors causing home page failures
+- [x] Async server now starts without path errors and serves basic content
 - [ ] Test PDF viewer with PDF.js integration across different PDF types
 - [ ] Validate EPUB reading functionality with various EPUB files
 - [ ] Test CBZ/ZIP comic viewing with different comic archives

@@ -1,5 +1,5 @@
 param (
-    [int]$ServicePort = 8888,
+    [int]$ServicePort = 8889,
     [switch]$Debug = $true
 )
 
@@ -156,27 +156,27 @@ Write-DebugLog "Loading request handler files..." -Level 'INFO'
 
 # Then load models
 Write-DebugLog "Loading model files..." -Level 'INFO'
-Get-ChildItem -LiteralPath ./models -Filter *.ps1 | ForEach-Object {
+Get-ChildItem -LiteralPath "$PSScriptRoot\models" -Filter *.ps1 | ForEach-Object {
     . $_.FullName
 }
 
 # Then load actions
 Write-DebugLog "Loading action files..." -Level 'INFO'
-Get-ChildItem -LiteralPath ./actions -Filter *.ps1 | ForEach-Object {
+Get-ChildItem -LiteralPath "$PSScriptRoot\actions" -Filter *.ps1 | ForEach-Object {
     . $_.FullName
 }
 
 # Check if indexHandler folder exists before trying to load from it
-if (Test-Path -Path "./indexHandler") {
+if (Test-Path -Path "$PSScriptRoot\indexHandler") {
     Write-DebugLog "Loading index handler files..." -Level 'INFO'
-    Get-ChildItem -LiteralPath ./indexHandler -Filter *.ps1 | ForEach-Object {
+    Get-ChildItem -LiteralPath "$PSScriptRoot\indexHandler" -Filter *.ps1 | ForEach-Object {
         . $_.FullName
     }
 }
 
 # Finally load controllers
 Write-DebugLog "Loading controller files..." -Level 'INFO'
-Get-ChildItem -LiteralPath ./controllers -Filter *.ps1 | ForEach-Object {
+Get-ChildItem -LiteralPath "$PSScriptRoot\controllers" -Filter *.ps1 | ForEach-Object {
     . $_.FullName
 }
 

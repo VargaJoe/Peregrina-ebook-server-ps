@@ -18,11 +18,13 @@ function Show-View {
     }
 
     # Determine if we should use a specific template based on model type
-    $templatePath = "./views/$viewName.pshtml"
+    $scriptRoot = Split-Path -Parent $PSCommandPath
+    $viewsPath = Join-Path (Split-Path -Parent $scriptRoot) "views"
+    $templatePath = Join-Path $viewsPath "$viewName.pshtml"
     
     # If the model has a 'type' property, check if there's a view template matching that type
     if ($model -and $model.type) {
-        $modelTypePath = "./views/$($model.type).pshtml"
+        $modelTypePath = Join-Path $viewsPath "$($model.type).pshtml"
         Write-Host "Checking for model-specific template: $modelTypePath"
         if (Test-Path -LiteralPath $modelTypePath) {
             Write-Host "Found model-specific template for type: $($model.type)"
@@ -35,11 +37,17 @@ function Show-View {
     # Read the HTML content from the file
     if (-not (Test-Path -LiteralPath $templatePath)) {
         Write-Host "Warning: Template not found at $templatePath, falling back to home template"
-        $templatePath = "./views/home.pshtml"
+        $templatePath = Join-Path $viewsPath "home.pshtml"
     }
     
     Write-Host "Using template: $templatePath"
     $viewTemplate = (Get-Content -LiteralPath $templatePath -Raw)
+    
+    # Check if template was loaded successfully
+    if ([string]::IsNullOrEmpty($viewTemplate)) {
+        Write-Host "Error: Template content is null or empty for: $templatePath"
+        return "Error: Template could not be loaded"
+    }
 
     # Define a regular expression pattern to match PowerShell snippets within <% ... %>
     $pattern = '<%\s*([\s\S]*?)\s*%>'

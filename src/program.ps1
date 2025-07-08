@@ -62,11 +62,11 @@ function Find-AvailablePort {
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
 
 # Load helper functions from the Utils folder
-Get-ChildItem -LiteralPath ./models -Filter *.ps1 | ForEach-Object {
+Get-ChildItem -LiteralPath "$PSScriptRoot\models" -Filter *.ps1 | ForEach-Object {
     . $_.FullName
 }
 
-Get-ChildItem -LiteralPath ./actions -Filter *.ps1 | ForEach-Object {
+Get-ChildItem -LiteralPath "$PSScriptRoot\actions" -Filter *.ps1 | ForEach-Object {
     . $_.FullName
 }
 
@@ -80,12 +80,12 @@ Write-Host "Loading synchronous request handler files..."
 . "$PSScriptRoot\requestHandler\peregrinaRequestObject.ps1"
 
 # Load utility files but exclude the async-specific ones
-Get-ChildItem -LiteralPath ./utils -Filter *.ps1 | Where-Object { $_.Name -ne "cancellation-handler.ps1" } | ForEach-Object {
+Get-ChildItem -LiteralPath "$PSScriptRoot\utils" -Filter *.ps1 | Where-Object { $_.Name -ne "cancellation-handler.ps1" } | ForEach-Object {
     . $_.FullName
 }
 
 # Load controllers from the Controllers folder
-Get-ChildItem -LiteralPath ./controllers -Filter *.ps1 | ForEach-Object {
+Get-ChildItem -LiteralPath "$PSScriptRoot\controllers" -Filter *.ps1 | ForEach-Object {
     . $_.FullName
 }
 
