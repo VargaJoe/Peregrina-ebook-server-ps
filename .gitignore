@@ -20,3 +20,5 @@ src/test.ps1
 .github/*.md
 .vscode/*
 src/debug-log.txt
+debug-log.txt
+log.txt

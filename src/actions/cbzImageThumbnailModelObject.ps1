@@ -2,9 +2,13 @@ class CbzImageThumbnailModelObject {
     [PSCustomObject]$response
 
     CbzImageThumbnailModelObject($requestObject) {
-        $typeName = "ResponseObject"
-        if ([System.Management.Automation.PSTypeName]$typeName) {
-            $this.response = New-Object -TypeName $typeName -ArgumentList $requestObject.HttpContext.Response
+        # Dynamically detect if we're in async mode or sync mode
+        if ("ResponseObjectAsync" -as [type]) {
+            Write-Host "Using ResponseObjectAsync for CBZ thumbnail action"
+            $this.response = New-Object -TypeName "ResponseObjectAsync" -ArgumentList $requestObject.HttpContext.Response
+        } else {
+            Write-Host "Using ResponseObject for CBZ thumbnail action"
+            $this.response = New-Object -TypeName "ResponseObject" -ArgumentList $requestObject.HttpContext.Response
         }
 
         $this.response.ResponseType = "CbzImageThumbnailModelObject"

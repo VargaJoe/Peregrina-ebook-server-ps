@@ -20,7 +20,7 @@ function debugLog(message) {
 
 // Initialize the viewer with the PDF URL and starting page
 function initPdfViewer(pdfUrl, initialPage = 1) {
-  debugLog(`Initializing PDF viewer with URL: ${pdfUrl}, page: ${initialPage}`);
+  // debugLog(`Initializing PDF viewer with URL: ${pdfUrl}, page: ${initialPage}`);
   
   canvas = document.getElementById('pdf-canvas');
   if (!canvas) {
@@ -40,11 +40,11 @@ function initPdfViewer(pdfUrl, initialPage = 1) {
     return;
   }
   
-  debugLog("Loading PDF document...");
+  // debugLog("Loading PDF document...");
   
   // Load the PDF
   pdfjsLib.getDocument(pdfUrl).promise.then(function(pdfDoc_) {
-    debugLog(`PDF loaded successfully with ${pdfDoc_.numPages} pages`);
+    //  debugLog(`PDF loaded successfully with ${pdfDoc_.numPages} pages`);
     pdfDoc = pdfDoc_;
     document.getElementById('page-count').textContent = pdfDoc.numPages;
     
